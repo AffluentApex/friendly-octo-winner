@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MNIST Digit Recognition</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .canvas-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        canvas {
+            border: 2px solid #333;
+            border-radius: 5px;
+            margin: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .confidence-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #ddd;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+        .confidence-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            border-radius: 10px;
+            transition: width 0.3s ease-in-out;
+        }
+        #modelSelect {
+            padding: 8px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .prediction-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MNIST Digit Recognition</h1>
+        
+        <select id="modelSelect">
+            <option value="basic_cnn">Basic CNN</option>
+            <option value="resnet">ResNet</option>
+        </select>
+
+        <div class="canvas-container">
+            <div>
+                <h3>Draw a digit (0-9)</h3>
+                <canvas id="drawingCanvas" width="280" height="280"></canvas>
+                <br>
+                <button onclick="clearCanvas()">Clear</button>
+                <button onclick="predict()">Predict</button>
+            </div>
+            
+            <div>
+                <h3>Webcam Input</h3>
+                <video id="webcam" width="280" height="280" style="display: none;"></video>
+                <canvas id="webcamCanvas" width="280" height="280"></canvas>
+                <br>
+                <button onclick="startWebcam()">Start Webcam</button>
+                <button onclick="captureAndPredict()">Capture & Predict</button>
+            </div>
+        </div>
+
+        <div class="result" id="result">
+            <h2>Prediction Result</h2>
+            <div class="prediction-details">
+                <div>
+                    <h3>Predicted Digit: <span id="predictedDigit">-</span></h3>
+                    <p>Confidence: <span id="confidence">-</span>%</p>
+                </div>
+                <div style="width: 60%;">
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const drawingCanvas = document.getElementById('drawingCanvas');
+        const ctx = drawingCanvas.getContext('2d');
+        const webcamCanvas = document.getElementById('webcamCanvas');
+        const webcamCtx = webcamCanvas.getContext('2d');
+        let isDrawing = false;
+        let webcam = null;
+
+        // Set up drawing canvas
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 20;
+        ctx.lineCap = 'round';
+
+        // Drawing event listeners
+        drawingCanvas.addEventListener('mousedown', startDrawing);
+        drawingCanvas.addEventListener('mousemove', draw);
+        drawingCanvas.addEventListener('mouseup', stopDrawing);
+        drawingCanvas.addEventListener('mouseout', stopDrawing);
+
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = drawingCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath();
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            ctx.beginPath();
+            document.getElementById('predictedDigit').textContent = '-';
+            document.getElementById('confidence').textContent = '-';
+            document.getElementById('confidenceFill').style.width = '0%';
+        }
+
+        async function predict() {
+            const imageData = drawingCanvas.toDataURL('image/png');
+            const model = document.getElementById('modelSelect').value;
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: imageData,
+                        model: model
+                    }),
+                });
+                
+                const result = await response.json();
+                if (result.error) {
+                    console.error('Prediction error:', result.error);
+                    return;
+                }
+                
+                updatePredictionDisplay(result);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function updatePredictionDisplay(result) {
+            const confidence = (result.confidence * 100).toFixed(2);
+            document.getElementById('predictedDigit').textContent = result.digit;
+            document.getElementById('confidence').textContent = confidence;
+            document.getElementById('confidenceFill').style.width = confidence + '%';
+        }
+
+        async function startWebcam() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.getElementById('webcam');
+                video.srcObject = stream;
+                webcam = video;
+                video.play();
+                
+                // Start continuous frame capture
+                requestAnimationFrame(updateWebcamCanvas);
+            } catch (error) {
+                console.error('Error accessing webcam:', error);
+            }
+        }
+
+        function updateWebcamCanvas() {
+            if (webcam && webcam.readyState === 4) {
+                webcamCtx.drawImage(webcam, 0, 0, webcamCanvas.width, webcamCanvas.height);
+                requestAnimationFrame(updateWebcamCanvas);
+            }
+        }
+
+        async function captureAndPredict() {
+            if (!webcam) {
+                alert('Please start the webcam first');
+                return;
+            }
+            
+            const imageData = webcamCanvas.toDataURL('image/png');
+            const model = document.getElementById('modelSelect').value;
+            
+            try {
+                const response = await fetch('/webcam_predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: imageData,
+                        model: model
+                    }),
+                });
+                
+                const result = await response.json();
+                if (result.error) {
+                    console.error('Prediction error:', result.error);
+                    return;
+                }
+                
+                updatePredictionDisplay(result);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Fetch available models when page loads
+        fetch('/models')
+            .then(response => response.json())
+            .then(data => {
+                const select = document.getElementById('modelSelect');
+                select.innerHTML = '';
+                data.models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model.charAt(0).toUpperCase() + model.slice(1);
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error fetching models:', error));
+    </script>
+</body>
+</html>
