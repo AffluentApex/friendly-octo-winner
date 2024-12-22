@@ -1,120 +1,84 @@
 # MNIST Digit Recognition Web App
 
-A sophisticated web application for real-time digit recognition using multiple deep learning models. The application provides both drawing pad and webcam interfaces for digit recognition.
+A Flask-based web application for real-time handwritten digit recognition using deep learning.
+
+## Overview
+
+This project implements a handwritten digit recognition system using PyTorch and Flask. The application features a modern, glass-morphism UI design that allows users to draw digits and get real-time predictions with confidence scores.
+
+## Model Training
+
+Initially, we trained the model locally, but due to lower confidence scores in predictions, we moved to Google Colab with TPU acceleration for improved performance. The TPU training code can be found in `train_tpu.py`, which implements:
+
+- Enhanced model architecture with residual connections
+- TPU-optimized training loop
+- Data augmentation for better generalization
+- Learning rate scheduling
+- Validation monitoring
+
+The TPU-trained model achieved significantly better accuracy and confidence in predictions compared to our locally trained models.
 
 ## Features
 
-### Multiple Model Architectures
-- **Basic CNN**: A simple yet effective convolutional neural network
-- **ResNet**: Deep residual network architecture
-- **VGG-Style Network**: (Coming soon) Advanced VGG-style architecture
+- Real-time digit recognition
+- Modern glass-morphism UI design
+- Confidence scores for predictions
+- Probability distribution for all digits
+- Mobile-responsive design
+- Touch screen support
 
-### Interactive Web Interface
-- Drawing pad for digit input
-- Real-time webcam digit recognition
-- Model selection dropdown
-- Confidence visualization with progress bar
-- Clear and intuitive user interface
+## Setup and Installation
 
-### Advanced Training Features
-- Cross-validation support
-- Learning rate scheduling
-- Early stopping
-- Model checkpointing
-- Data augmentation
-- TensorBoard integration for visualization
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/mnist_digit_recognition.git
-cd mnist_digit_recognition
-```
-
+1. Clone the repository
 2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
-
-## Usage
-
-1. Train the models:
-```bash
-python train_models.py
-```
-This will train all available models and save them in the `checkpoints` directory.
-
-2. Start the web application:
+3. Download the trained model (not included in repository due to size)
+4. Place the model in the `models` directory
+5. Run the Flask app:
 ```bash
 python app.py
 ```
 
-3. Open your browser and navigate to `http://localhost:5000`
+## Model Architecture
 
-## Project Structure
-
-```
-mnist_digit_recognition/
-├── app.py                 # Flask web application
-├── models.py             # Neural network model architectures
-├── train_models.py       # Training script
-├── training_utils.py     # Training utilities and data transforms
-├── test_custom_images.py # Testing script for custom images
-├── requirements.txt      # Project dependencies
-├── checkpoints/         # Saved model weights
-├── data/               # MNIST dataset (downloaded automatically)
-└── templates/          # HTML templates
-    └── index.html      # Main web interface
-```
-
-## Model Architectures
-
-### Basic CNN
-- 3 convolutional layers
-- 2 fully connected layers
-- ReLU activation
-- Max pooling
-- Dropout for regularization
-
-### ResNet
-- Deep residual network
-- Skip connections
+We use an enhanced CNN architecture (`EnhancedMNISTNet`) with the following improvements:
+- Residual connections
 - Batch normalization
-- Advanced architecture for better accuracy
+- Dropout for regularization
+- Increased network depth
 
-### VGG-Style Network (Coming Soon)
-- Deep VGG-style architecture
-- Multiple convolutional layers
-- Advanced feature extraction
+## Training Details
 
-## Dependencies
+The final model was trained on Google Colab using TPU acceleration with the following specifications:
+- Training epochs: 50
+- Batch size: 1024 (optimized for TPU)
+- Learning rate: 0.001 with cosine annealing
+- Data augmentation: Random rotation, shifts, and zoom
+- Validation split: 20%
 
-- PyTorch
-- Flask
-- OpenCV
-- NumPy
-- TensorBoard
-- scikit-learn
-- tqdm
+## Usage
 
-## Performance
+1. Open the web application in your browser
+2. Draw a digit using your mouse or touch screen
+3. Click "Recognize" to get the prediction
+4. View the confidence score and probability distribution
+5. Use "Clear" to reset the canvas
 
-Current model accuracies on MNIST test set:
-- Basic CNN: ~98%
-- ResNet: ~99%
-- VGG (Coming soon)
+## Files
+
+- `app.py`: Flask application
+- `models.py`: Neural network architecture
+- `train_tpu.py`: TPU-accelerated training code
+- `templates/index.html`: Frontend UI
+- `models/`: Directory containing trained models
+- `download_dataset.py`: MNIST dataset downloader
 
 ## Contributing
 
-Feel free to open issues or submit pull requests. All contributions are welcome!
+Feel free to submit issues, fork the repository, and create pull requests for any improvements.
 
 ## License
 
-MIT License - feel free to use this project for your own learning and development.
-
-## Acknowledgments
-
-- MNIST Dataset
-- PyTorch Team
-- Flask Framework
+MIT License
