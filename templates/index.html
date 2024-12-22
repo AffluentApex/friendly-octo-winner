@@ -1,116 +1,207 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>MNIST Digit Recognition</title>
+    <title>Digit Recognition | AI Vision</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --glass-shadow: rgba(0, 0, 0, 0.1);
+            --accent-color: #6366f1;
+            --text-color: #f8fafc;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f0f0f0;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .canvas-container {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(45deg, #0f172a, #1e293b);
+            color: var(--text-color);
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 40px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px var(--glass-shadow);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 30px;
+        }
+
+        .drawing-section, .result-section {
+            background: var(--glass-bg);
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+        }
+
+        canvas {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border: 2px solid var(--glass-border);
             margin-bottom: 20px;
         }
-        canvas {
-            border: 2px solid #333;
-            border-radius: 5px;
-            margin: 10px;
-        }
-        button {
-            padding: 10px 20px;
-            margin: 5px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        .result {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-        }
-        .confidence-bar {
-            width: 100%;
-            height: 20px;
-            background-color: #ddd;
-            border-radius: 10px;
-            margin-top: 10px;
-        }
-        .confidence-fill {
-            height: 100%;
-            background-color: #4CAF50;
-            border-radius: 10px;
-            transition: width 0.3s ease-in-out;
-        }
-        #modelSelect {
-            padding: 8px;
-            margin: 10px 0;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-        .prediction-details {
+
+        .button-group {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: var(--accent-color);
+            color: white;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .result-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .prediction {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .digit {
+            font-size: 4rem;
+            font-weight: 600;
+            margin: 20px 0;
+            color: var(--accent-color);
+        }
+
+        .confidence {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
             margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .probabilities {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .prob-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .prob-digit {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .prob-value {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            .probabilities {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>MNIST Digit Recognition</h1>
+        <h1>AI Digit Recognition</h1>
         
-        <select id="modelSelect">
-            <option value="basic_cnn">Basic CNN</option>
-            <option value="resnet">ResNet</option>
-        </select>
-
-        <div class="canvas-container">
-            <div>
-                <h3>Draw a digit (0-9)</h3>
+        <div class="content">
+            <div class="drawing-section">
+                <h2>Draw a Digit (0-9)</h2>
                 <canvas id="drawingCanvas" width="280" height="280"></canvas>
-                <br>
-                <button onclick="clearCanvas()">Clear</button>
-                <button onclick="predict()">Predict</button>
+                <div class="button-group">
+                    <button onclick="clearCanvas()">Clear</button>
+                    <button onclick="predict()">Recognize</button>
+                </div>
             </div>
             
-            <div>
-                <h3>Webcam Input</h3>
-                <video id="webcam" width="280" height="280" style="display: none;"></video>
-                <canvas id="webcamCanvas" width="280" height="280"></canvas>
-                <br>
-                <button onclick="startWebcam()">Start Webcam</button>
-                <button onclick="captureAndPredict()">Capture & Predict</button>
-            </div>
-        </div>
-
-        <div class="result" id="result">
-            <h2>Prediction Result</h2>
-            <div class="prediction-details">
-                <div>
-                    <h3>Predicted Digit: <span id="predictedDigit">-</span></h3>
-                    <p>Confidence: <span id="confidence">-</span>%</p>
-                </div>
-                <div style="width: 60%;">
-                    <div class="confidence-bar">
-                        <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
+            <div class="result-section">
+                <div class="prediction">
+                    <h2>Prediction</h2>
+                    <div class="digit" id="predictedDigit">-</div>
+                    <div class="confidence">
+                        Confidence: <span id="confidence">-</span>%
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="confidenceFill"></div>
+                        </div>
                     </div>
+                </div>
+                
+                <div class="probabilities" id="probabilities">
+                    <!-- Probability items will be added here -->
                 </div>
             </div>
         </div>
@@ -119,23 +210,54 @@
     <script>
         const drawingCanvas = document.getElementById('drawingCanvas');
         const ctx = drawingCanvas.getContext('2d');
-        const webcamCanvas = document.getElementById('webcamCanvas');
-        const webcamCtx = webcamCanvas.getContext('2d');
         let isDrawing = false;
-        let webcam = null;
 
         // Set up drawing canvas
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 20;
-        ctx.lineCap = 'round';
+        function setupCanvas() {
+            const rect = drawingCanvas.getBoundingClientRect();
+            drawingCanvas.width = rect.width;
+            drawingCanvas.height = rect.height;
+            ctx.fillStyle = '#1a1a1a';  // Dark background
+            ctx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = rect.width / 15;  // Responsive line width
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
+
+        // Initialize canvas
+        window.addEventListener('load', setupCanvas);
+        window.addEventListener('resize', setupCanvas);
 
         // Drawing event listeners
         drawingCanvas.addEventListener('mousedown', startDrawing);
         drawingCanvas.addEventListener('mousemove', draw);
         drawingCanvas.addEventListener('mouseup', stopDrawing);
         drawingCanvas.addEventListener('mouseout', stopDrawing);
+        
+        // Touch events for mobile
+        drawingCanvas.addEventListener('touchstart', handleTouch);
+        drawingCanvas.addEventListener('touchmove', handleTouch);
+        drawingCanvas.addEventListener('touchend', stopDrawing);
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = drawingCanvas.getBoundingClientRect();
+            const x = (touch.clientX - rect.left) * (drawingCanvas.width / rect.width);
+            const y = (touch.clientY - rect.top) * (drawingCanvas.height / rect.height);
+
+            if (e.type === 'touchstart') {
+                isDrawing = true;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            } else if (e.type === 'touchmove' && isDrawing) {
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            }
+        }
 
         function startDrawing(e) {
             isDrawing = true;
@@ -145,8 +267,8 @@
         function draw(e) {
             if (!isDrawing) return;
             const rect = drawingCanvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const x = (e.clientX - rect.left) * (drawingCanvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (drawingCanvas.height / rect.height);
             
             ctx.lineTo(x, y);
             ctx.stroke();
@@ -160,17 +282,30 @@
         }
 
         function clearCanvas() {
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-            ctx.beginPath();
+            setupCanvas();  // Reset canvas with proper dimensions
             document.getElementById('predictedDigit').textContent = '-';
             document.getElementById('confidence').textContent = '-';
             document.getElementById('confidenceFill').style.width = '0%';
+            document.getElementById('probabilities').innerHTML = '';
+        }
+
+        function updateProbabilities(probs) {
+            const container = document.getElementById('probabilities');
+            container.innerHTML = '';
+            
+            probs.forEach((prob, digit) => {
+                const item = document.createElement('div');
+                item.className = 'prob-item';
+                item.innerHTML = `
+                    <div class="prob-digit">${digit}</div>
+                    <div class="prob-value">${(prob * 100).toFixed(1)}%</div>
+                `;
+                container.appendChild(item);
+            });
         }
 
         async function predict() {
             const imageData = drawingCanvas.toDataURL('image/png');
-            const model = document.getElementById('modelSelect').value;
             
             try {
                 const response = await fetch('/predict', {
@@ -179,8 +314,7 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        image: imageData,
-                        model: model
+                        image: imageData
                     }),
                 });
                 
@@ -190,88 +324,15 @@
                     return;
                 }
                 
-                updatePredictionDisplay(result);
+                const confidence = (result.confidence * 100).toFixed(2);
+                document.getElementById('predictedDigit').textContent = result.digit;
+                document.getElementById('confidence').textContent = confidence;
+                document.getElementById('confidenceFill').style.width = confidence + '%';
+                updateProbabilities(result.probabilities);
             } catch (error) {
                 console.error('Error:', error);
             }
         }
-
-        function updatePredictionDisplay(result) {
-            const confidence = (result.confidence * 100).toFixed(2);
-            document.getElementById('predictedDigit').textContent = result.digit;
-            document.getElementById('confidence').textContent = confidence;
-            document.getElementById('confidenceFill').style.width = confidence + '%';
-        }
-
-        async function startWebcam() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                const video = document.getElementById('webcam');
-                video.srcObject = stream;
-                webcam = video;
-                video.play();
-                
-                // Start continuous frame capture
-                requestAnimationFrame(updateWebcamCanvas);
-            } catch (error) {
-                console.error('Error accessing webcam:', error);
-            }
-        }
-
-        function updateWebcamCanvas() {
-            if (webcam && webcam.readyState === 4) {
-                webcamCtx.drawImage(webcam, 0, 0, webcamCanvas.width, webcamCanvas.height);
-                requestAnimationFrame(updateWebcamCanvas);
-            }
-        }
-
-        async function captureAndPredict() {
-            if (!webcam) {
-                alert('Please start the webcam first');
-                return;
-            }
-            
-            const imageData = webcamCanvas.toDataURL('image/png');
-            const model = document.getElementById('modelSelect').value;
-            
-            try {
-                const response = await fetch('/webcam_predict', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        image: imageData,
-                        model: model
-                    }),
-                });
-                
-                const result = await response.json();
-                if (result.error) {
-                    console.error('Prediction error:', result.error);
-                    return;
-                }
-                
-                updatePredictionDisplay(result);
-            } catch (error) {
-                console.error('Error:', error);
-            }
-        }
-
-        // Fetch available models when page loads
-        fetch('/models')
-            .then(response => response.json())
-            .then(data => {
-                const select = document.getElementById('modelSelect');
-                select.innerHTML = '';
-                data.models.forEach(model => {
-                    const option = document.createElement('option');
-                    option.value = model;
-                    option.textContent = model.charAt(0).toUpperCase() + model.slice(1);
-                    select.appendChild(option);
-                });
-            })
-            .catch(error => console.error('Error fetching models:', error));
     </script>
 </body>
 </html>

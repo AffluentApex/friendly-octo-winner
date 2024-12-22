@@ -125,6 +125,50 @@ class VGGNet(nn.Module):
         x = self.classifier(x)
         return F.log_softmax(x, dim=1)
 
+class EnhancedMNISTNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        
+        # Initial convolution
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True)
+        )
+        
+        # Residual blocks
+        self.layer1 = nn.Sequential(
+            ResidualBlock(64, 64),
+            ResidualBlock(64, 64)
+        )
+        self.layer2 = nn.Sequential(
+            ResidualBlock(64, 128, stride=2),
+            ResidualBlock(128, 128)
+        )
+        self.layer3 = nn.Sequential(
+            ResidualBlock(128, 256, stride=2),
+            ResidualBlock(256, 256)
+        )
+        
+        # Classification head
+        self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(128, 10)
+        )
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.avg_pool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+
 class EnsembleModel(nn.Module):
     def __init__(self, models):
         super(EnsembleModel, self).__init__()

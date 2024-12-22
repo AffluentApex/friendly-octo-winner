@@ -3,33 +3,55 @@ from flask_cors import CORS
 import torch
 import base64
 import numpy as np
-import cv2
 from PIL import Image
 import io
-from models import BasicCNN, ResNet
+from models import EnhancedMNISTNet
 import torchvision.transforms as transforms
+import logging
+import os
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
 
-# Load models
+# Load model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
+logger.info(f"Using device: {device}")
 
-models = {
-    'basic_cnn': BasicCNN().to(device),
-    'resnet': ResNet().to(device)
-}
+# Initialize model
+model = EnhancedMNISTNet().to(device)
 
-# Load trained models
+# Load the trained model
+MODEL_PATH = r"C:\Users\Ronit\Downloads\best_mnist_model.pth"
+logger.info(f"Loading model from: {MODEL_PATH}")
+
 try:
-    for name, model in models.items():
-        print(f"Loading {name} model...")
-        model.load_state_dict(torch.load(f'checkpoints/{name}_best.pth'))
-        model.eval()
-        print(f"Successfully loaded {name} model")
+    if not os.path.exists(MODEL_PATH):
+        raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
+        
+    checkpoint = torch.load(MODEL_PATH, map_location=device)
+    
+    # Log checkpoint contents for debugging
+    logger.info(f"Checkpoint keys: {checkpoint.keys()}")
+    
+    if 'model_state_dict' in checkpoint:
+        model.load_state_dict(checkpoint['model_state_dict'])
+        accuracy = checkpoint.get('accuracy', 'N/A')
+        logger.info(f"Model loaded successfully with accuracy: {accuracy}%")
+    else:
+        # Try loading as direct state dict
+        model.load_state_dict(checkpoint)
+        logger.info("Model loaded successfully (direct state dict)")
+    
+    model.eval()
+    logger.info("Model set to evaluation mode")
+    
 except Exception as e:
-    print(f"Error loading models: {e}")
+    logger.error(f"Error loading model: {str(e)}")
+    raise
 
 # Image preprocessing
 transform = transforms.Compose([
@@ -52,7 +74,7 @@ def preprocess_image(image_data):
         image_tensor = transform(image).unsqueeze(0)
         return image_tensor
     except Exception as e:
-        print(f"Error in preprocessing: {e}")
+        logger.error(f"Error in preprocessing: {e}")
         return None
 
 @app.route('/')
@@ -62,13 +84,9 @@ def home():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        # Get image data and model choice from request
+        # Get image data
         data = request.json
         image_data = data['image']
-        model_name = data.get('model', 'basic_cnn')  # default to basic_cnn
-        
-        if model_name not in models:
-            return jsonify({'error': f'Model {model_name} not found'}), 400
         
         # Preprocess image
         image_tensor = preprocess_image(image_data)
@@ -80,7 +98,6 @@ def predict():
         
         # Make prediction
         with torch.no_grad():
-            model = models[model_name]
             output = model(image_tensor)
             probabilities = torch.softmax(output, dim=1)
             pred_probs, pred_class = torch.max(probabilities, 1)
@@ -91,67 +108,16 @@ def predict():
             prediction = {
                 'digit': int(pred_class.item()),
                 'confidence': float(pred_probs.item()),
-                'probabilities': all_probs,
-                'model_used': model_name
+                'probabilities': all_probs
             }
             
-            print(f"Prediction made: {prediction['digit']} with confidence: {prediction['confidence']:.2f}")
+            logger.info(f"Prediction made: {prediction['digit']} with confidence: {prediction['confidence']:.2f}")
             return jsonify(prediction)
     
     except Exception as e:
-        print(f"Error in prediction: {e}")
+        logger.error(f"Error in prediction: {e}")
         return jsonify({'error': str(e)}), 500
-
-@app.route('/webcam_predict', methods=['POST'])
-def webcam_predict():
-    try:
-        # Get image data from request
-        image_data = request.json['image']
-        model_name = request.json.get('model', 'basic_cnn')  # default to basic_cnn
-        
-        if model_name not in models:
-            return jsonify({'error': f'Model {model_name} not found'}), 400
-        
-        # Convert base64 to OpenCV format
-        image_data = image_data.split(',')[1]
-        image_bytes = base64.b64decode(image_data)
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        # Convert to grayscale
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        
-        # Convert to PIL Image
-        pil_image = Image.fromarray(gray)
-        
-        # Apply transformations
-        image_tensor = transform(pil_image).unsqueeze(0).to(device)
-        
-        # Make prediction
-        with torch.no_grad():
-            model = models[model_name]
-            output = model(image_tensor)
-            probabilities = torch.softmax(output, dim=1)
-            pred_probs, pred_class = torch.max(probabilities, 1)
-            
-            prediction = {
-                'digit': int(pred_class.item()),
-                'confidence': float(pred_probs.item()),
-                'probabilities': probabilities[0].tolist(),
-                'model_used': model_name
-            }
-            
-            print(f"Webcam prediction made: {prediction['digit']} with confidence: {prediction['confidence']:.2f}")
-            return jsonify(prediction)
-    
-    except Exception as e:
-        print(f"Error in webcam prediction: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/models', methods=['GET'])
-def get_available_models():
-    return jsonify({'models': list(models.keys())})
 
 if __name__ == '__main__':
-    print("Starting Flask server...")
+    logger.info("Starting Flask server...")
     app.run(debug=True)
